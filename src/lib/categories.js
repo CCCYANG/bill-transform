@@ -15,6 +15,11 @@ const CATEGORY_MAP = {
   '其他莫名损耗': ['快递费']
 }
 
+const INCOME_CATEGORY_MAP = {
+  '职业收入': ['工资', '利息', '生意', '投资', '兼职', '加班', '奖金'],
+  '其他收入': ['意外来钱', '抢红包', '中奖', '家人给钱', '退税', '礼金']
+}
+
 const RULES = [
   { kw: ['宠物'], cat: ['其他', '宠物'] },
   { kw: ['丢失', '遗失'], cat: ['其他', '丢失'] },
@@ -108,13 +113,54 @@ const RULES = [
   { kw: ['快递费', '快递', '物流', '通讯'], cat: ['其他莫名损耗', '快递费'] }
 ]
 
-export { CATEGORY_MAP }
+const INCOME_RULES = [
+  { kw: ['工资', '薪资', '薪水'], cat: ['职业收入', '工资'] },
+  { kw: ['利息'], cat: ['职业收入', '利息'] },
+  { kw: ['生意', '经营'], cat: ['职业收入', '生意'] },
+  { kw: ['投资', '理财', '基金', '股票'], cat: ['职业收入', '投资'] },
+  { kw: ['兼职'], cat: ['职业收入', '兼职'] },
+  { kw: ['加班'], cat: ['职业收入', '加班'] },
+  { kw: ['奖金', '奖励'], cat: ['职业收入', '奖金'] },
+  { kw: ['红包', '微信红包'], cat: ['其他收入', '抢红包'] },
+  { kw: ['中奖', '彩票'], cat: ['其他收入', '中奖'] },
+  { kw: ['家人', '父母', '亲属'], cat: ['其他收入', '家人给钱'] },
+  { kw: ['退税'], cat: ['其他收入', '退税'] },
+  { kw: ['礼金', '份子钱'], cat: ['其他收入', '礼金'] }
+]
 
-export function classify (desc) {
+const JD_CATEGORY_RULES = [
+  { tags: ['母婴用品'], cat: ['养娃', '日常用品'] },
+  { tags: ['文体玩具'], cat: ['养娃', '玩具'] },
+  { tags: ['医疗保健'], cat: ['医疗', '保健'] },
+  { tags: ['美妆个护'], cat: ['购物', '护肤美妆'] },
+  { tags: ['汽车用品'], cat: ['交通', '私家车'] },
+  { tags: ['电脑办公', '手机通讯', '数码电器'], cat: ['购物', '数码'] },
+  { tags: ['家居家装'], cat: ['购物', '家装'] },
+  { tags: ['食品酒饮'], cat: ['餐饮', '零食'] },
+  { tags: ['休闲娱乐'], cat: ['娱乐', '休闲'] },
+  { tags: ['白条'], cat: ['金融', '购物分期'] },
+  { tags: ['清洁纸品', '日用百货', '其他网购', '网购'], cat: ['购物', '日用品'] }
+]
+
+export { CATEGORY_MAP, INCOME_CATEGORY_MAP }
+
+export function classify (desc, jdCategory = '') {
+  const jdTags = String(jdCategory).split(/\s+/).filter(Boolean)
+  for (const r of JD_CATEGORY_RULES) {
+    if (r.tags.some(tag => jdTags.includes(tag))) return r.cat
+  }
+
   for (const r of RULES) {
     if (r.kw.some(k => desc.includes(k))) return r.cat
   }
-  return ['其他', '未分类']
+  return ['购物', '日用品']
+}
+
+export function classifyIncome (desc) {
+  for (const r of INCOME_RULES) {
+    if (r.kw.some(k => desc.includes(k))) return r.cat
+  }
+  return ['其他收入', '意外来钱']
 }
 
 export function isTransfer (desc) {

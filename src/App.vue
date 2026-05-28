@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span class="title">账单转换工具</span>
-          <span class="subtitle">信用卡 PDF → 记账模板</span>
+          <span class="subtitle">信用卡 PDF / 京东 CSV → 记账模板</span>
         </div>
       </template>
 
@@ -13,13 +13,13 @@
           drag
           :auto-upload="false"
           :show-file-list="false"
-          accept=".pdf"
+          accept=".pdf,.csv"
           :on-change="onFileChange"
         >
           <el-icon class="el-icon--upload"><upload-filled /></el-icon>
-          <div class="el-upload__text">将 PDF 拖到此处，或<em>点击上传</em></div>
+          <div class="el-upload__text">将 PDF 或 CSV 拖到此处，或<em>点击上传</em></div>
           <template #tip>
-            <div class="el-upload__tip">支持多家银行信用卡 PDF 对账单</div>
+            <div class="el-upload__tip">支持多家银行信用卡 PDF 对账单、京东账单 CSV</div>
           </template>
         </el-upload>
         <div v-if="sourceFile" class="file-info">
@@ -228,6 +228,7 @@ import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import { UploadFilled, Document, Edit, Download } from '@element-plus/icons-vue'
 import { parseCmbStatement } from './lib/pdf-parser.js'
+import { parseJdCsv } from './lib/jd-csv-parser.js'
 import { transform } from './lib/transform.js'
 import { buildWorkbook, downloadWorkbook } from './lib/excel-writer.js'
 
@@ -257,14 +258,28 @@ const onFileChange = async (file) => {
   rawLines.value = []
   try {
     const buf = await raw.arrayBuffer()
-    const p = await parseCmbStatement(buf)
+    const fileName = raw.name.toLowerCase()
+    
+    let p
+    if (fileName.endsWith('.csv')) {
+      // CSV 文件，使用京东 CSV 解析器
+      p = await parseJdCsv(buf)
+    } else if (fileName.endsWith('.pdf')) {
+      // PDF 文件，使用 PDF 解析器
+      p = await parseCmbStatement(buf)
+    } else {
+      throw new Error('不支持的文件格式，请上传 PDF 或 CSV 文件')
+    }
+    
     rawLines.value = p.rawLines || []
     if (!p.transactions.length) {
       showDebug.value = true
       throw new Error('未识别到任何交易记录，请查看原始内容')
     }
     parsed.value = p
-    result.value = transform(p)
+    // 根据不同的账单类型设置默认账户
+    const account = p.bankName === '京东' ? '京东' : '招商银行信用卡'
+    result.value = transform(p, { creditCardAccount: account })
     result.value.expenses.forEach(record => {
       record.成员 = '宝宝的憨憨'
     })

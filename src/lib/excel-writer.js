@@ -3,6 +3,14 @@ import ExcelJS from 'exceljs'
 const EXPENSE_HEADER = ['交易类型', '日期', '一级分类', '二级分类', '支出账户', '金额', '成员', '商家', '项目', '备注']
 const INCOME_HEADER = ['交易类型', '日期', '一级分类', '二级分类', '收入账户', '金额', '成员', '商家', '项目', '备注']
 const TRANSFER_HEADER = ['交易类型', '日期', '转出账户', '转入账户', '金额', '成员', '商家', '项目', '备注']
+const BASIC_INFO_NAME_MAX_LENGTH = 50
+
+function limitBasicInfoName (value) {
+  if (value === null || value === undefined) return value
+  const chars = Array.from(String(value))
+  if (chars.length <= BASIC_INFO_NAME_MAX_LENGTH) return value
+  return chars.slice(0, BASIC_INFO_NAME_MAX_LENGTH - 3).join('') + '...'
+}
 
 export async function buildWorkbook ({ expenses, incomes, transfers }) {
   const workbook = new ExcelJS.Workbook()
@@ -69,26 +77,26 @@ function addSheetData (worksheet, data, header, type) {
       worksheet.addRow([
         row.交易类型,
         row.日期,
-        row.一级分类,
-        row.二级分类,
-        row.收入账户,
+        limitBasicInfoName(row.一级分类),
+        limitBasicInfoName(row.二级分类),
+        limitBasicInfoName(row.收入账户),
         row.金额,
-        row.成员,
-        row.商家,
-        row.项目,
+        limitBasicInfoName(row.成员),
+        limitBasicInfoName(row.商家),
+        limitBasicInfoName(row.项目),
         row.备注
       ])
     } else {
       worksheet.addRow([
         row.交易类型,
         row.日期,
-        row.一级分类,
-        row.二级分类,
-        row.收入账户,
+        limitBasicInfoName(row.一级分类),
+        limitBasicInfoName(row.二级分类),
+        limitBasicInfoName(row.收入账户),
         row.金额,
-        row.成员,
-        row.商家,
-        row.项目,
+        limitBasicInfoName(row.成员),
+        limitBasicInfoName(row.商家),
+        limitBasicInfoName(row.项目),
         row.备注
       ])
     }

@@ -67,6 +67,7 @@ bill-transform/
 ├── src/
 │   ├── lib/
 │   │   ├── pdf-parser.js    # PDF 解析器
+│   │   ├── jd-csv-parser.js # 京东 CSV 解析器
 │   │   ├── transform.js     # 数据转换器
 │   │   ├── categories.js    # 分类规则
 │   │   └── excel-writer.js  # Excel 导出器
@@ -74,6 +75,7 @@ bill-transform/
 │   │   └── index.css
 │   ├── App.vue             # 主应用组件
 │   └── main.js             # 入口文件
+├── test-scripts/           # 本地测试/调试脚本（不提交 git）
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml      # GitHub Pages 部署工作流
@@ -82,6 +84,8 @@ bill-transform/
 ├── vite.config.js
 └── template.xls            # 记账模板参考文件
 ```
+
+`test-scripts/` 已在 `.gitignore` 中忽略，用于存放本地临时测试脚本和 debug 脚本，不会上传到 git。
 
 ## License
 
