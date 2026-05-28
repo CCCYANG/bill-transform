@@ -7,3 +7,9 @@ pnpm-lock.yaml
 yarn.lock
 .claude
 .agents
+test-pdf.js
+
+# IDE 配置文件
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json

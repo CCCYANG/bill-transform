@@ -12,7 +12,7 @@ const CATEGORY_MAP = {
   '餐饮': ['下午茶', '加餐', '粮油调料', '烟酒饮品', '三餐', '买菜', '零食', '水果'],
   '居家': ['物业', '房租', '维修', '水电煤', '网费', '话费'],
   '购物': ['电器', '数码', '保健品', '家装', '衣帽鞋包', '日用品', '饰品', '护肤美妆'],
-  '其他莫名损耗': ['快递费'],
+  '其他莫名损耗': ['快递费']
 }
 
 const RULES = [
@@ -105,18 +105,18 @@ const RULES = [
   { kw: ['护肤美妆', '美妆', '化妆品', '兰蔻', '欧莱雅', '美容', '美发', '美甲', 'SPA'], cat: ['购物', '护肤美妆'] },
   { kw: ['抖音电商', '格物致品', '淘宝', '天猫', '京东', '拼多多', '电子商务', '贝达', '图睿睿'], cat: ['购物', '日用品'] },
 
-  { kw: ['快递费', '快递', '物流', '通讯'], cat: ['其他莫名损耗', '快递费'] },
+  { kw: ['快递费', '快递', '物流', '通讯'], cat: ['其他莫名损耗', '快递费'] }
 ]
 
 export { CATEGORY_MAP }
 
-export function classify(desc) {
+export function classify (desc) {
   for (const r of RULES) {
     if (r.kw.some(k => desc.includes(k))) return r.cat
   }
   return ['其他', '未分类']
 }
 
-export function isTransfer(desc) {
+export function isTransfer (desc) {
   return /还款|跨行还款/.test(desc)
 }
