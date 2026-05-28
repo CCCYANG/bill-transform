@@ -63,18 +63,24 @@ pnpm preview
 ```
 bill-transform/
 ├── public/
-│   └── template.xls       # 记账模板文件
+│   └── favicon.svg
 ├── src/
 │   ├── lib/
-│   │   ├── pdfParser.js    # PDF 解析器
+│   │   ├── pdf-parser.js    # PDF 解析器
 │   │   ├── transform.js     # 数据转换器
 │   │   ├── categories.js    # 分类规则
-│   │   └── excelWriter.js   # Excel 导出器
+│   │   └── excel-writer.js  # Excel 导出器
+│   ├── styles/
+│   │   └── index.css
 │   ├── App.vue             # 主应用组件
 │   └── main.js             # 入口文件
+├── .github/
+│   └── workflows/
+│       └── deploy.yml      # GitHub Pages 部署工作流
 ├── index.html
 ├── package.json
-└── vite.config.js
+├── vite.config.js
+└── template.xls            # 记账模板参考文件
 ```
 
 ## License
