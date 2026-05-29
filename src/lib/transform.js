@@ -1,7 +1,19 @@
-import { classify, classifyIncome } from './categories.js'
 import dayjs from 'dayjs'
 
-const ACCOUNT = '招商银行信用卡'
+import { classify, classifyIncome } from './categories.js'
+
+const CREDIT_CARD_ACCOUNTS = {
+  京东: '京东',
+  招商银行: '招商银行信用卡',
+  广发银行: '广发银行信用卡',
+  建设银行: '建设银行信用卡'
+}
+
+const DEFAULT_ACCOUNT = '信用卡'
+
+export function getCreditCardAccount (parsed = {}) {
+  return CREDIT_CARD_ACCOUNTS[parsed.bankName] || DEFAULT_ACCOUNT
+}
 
 function extractMerchant (desc) {
   const idx = desc.indexOf('-')
@@ -30,7 +42,7 @@ function compareDates (dateA, dateB) {
 }
 
 export function transform (parsed, options = {}) {
-  const { creditCardAccount = ACCOUNT } = options
+  const { creditCardAccount = getCreditCardAccount(parsed) } = options
   const expenses = []
   const incomes = []
   const transfers = []

@@ -39,7 +39,7 @@ async function extractLines (arrayBuffer) {
 }
 
 function buildDate (ymd) {
-  const [y, m, d] = ymd.split('/').map(n => parseInt(n))
+  const [y, m, d] = ymd.split(/[/-]/).map(n => parseInt(n))
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')} 06:00:00`
 }
 
@@ -47,18 +47,18 @@ function detectBank (lines) {
   const fullText = lines.join(' ')
   if (fullText.includes('招商银行')) return '招商银行'
   if (fullText.includes('cgbchina.com.cn')) return '广发银行'
-  if (fullText.includes('ccb.com.cn')) return '建设银行'
+  if (fullText.includes('中国建设银行') || fullText.includes('龙卡信用卡')) return '建设银行'
   return '信用卡'
 }
 
 export async function parseCmbStatement (arrayBuffer) {
   const lines = await extractLines(arrayBuffer)
-  
+
   const bankName = detectBank(lines)
-  
+
   let billYear = new Date().getFullYear()
   let billMonth = new Date().getMonth() + 1
-  
+
   const header = lines.find(l => /\d{4}\/\d{2}\/\d{2}.*-.*\d{4}\/\d{2}\/\d{2}/.test(l))
   if (header) {
     const ym = header.match(/(\d{4})\/(\d{2})\/\d{2}/)
@@ -66,13 +66,23 @@ export async function parseCmbStatement (arrayBuffer) {
       billYear = parseInt(ym[1])
       billMonth = parseInt(ym[2])
     }
+  } else {
+    const ccbStmt = lines.find(l => /^\d{4}-\d{2}-\d{2}\s+\d{4}\/\d{2}\/\d{2}-\d{4}\/\d{2}\/\d{2}/.test(l))
+    if (ccbStmt) {
+      const ym = ccbStmt.match(/^(\d{4})-(\d{2})-\d{2}/)
+      if (ym) {
+        billYear = parseInt(ym[1])
+        billMonth = parseInt(ym[2])
+      }
+    }
   }
 
   const transactions = []
-  
+
   const cmbRe = /^(\d{2}\/\d{2})\s+(?:(\d{2}\/\d{2})\s+)?(.+?)\s+(-?[\d,]+\.\d{2})\s+(\d{4})\s+(-?[\d,]+\.\d{2})(?:\([A-Z]+\))?$/
   const cgbRe = /^(\d{4}\/\d{2}\/\d{2})\s+(\d{4}\/\d{2}\/\d{2})\s+\((消费|退款|还款)\)(.+?)\s+(-?[\d,]+\.\d{2})\s+人民币\s+(-?[\d,]+\.\d{2})\s+人民币$/
-  
+  const ccbRe = /^(\d{4}-\d{2}-\d{2})\s+(\d{4}-\d{2}-\d{2})\s+(\d{4})\s+(.+?)\s+CNY\s+(-?[\d,]+\.\d{2})\s+CNY\s+-?[\d,]+\.\d{2}$/
+
   let section = null
 
   for (const raw of lines) {
@@ -80,7 +90,7 @@ export async function parseCmbStatement (arrayBuffer) {
       section = SECTIONS[raw]
       continue
     }
-    
+
     let m = raw.match(cmbRe)
     if (m) {
       if (!section) continue
@@ -88,7 +98,7 @@ export async function parseCmbStatement (arrayBuffer) {
       const [mm, dd] = td.split('/').map(n => parseInt(n))
       const y = mm > billMonth ? billYear - 1 : billYear
       const transDate = `${y}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')} 06:00:00`
-      
+
       transactions.push({
         section,
         transDate,
@@ -99,7 +109,7 @@ export async function parseCmbStatement (arrayBuffer) {
       })
       continue
     }
-    
+
     m = raw.match(cgbRe)
     if (m) {
       const [, td, pd, type, desc, rmb] = m
@@ -114,7 +124,26 @@ export async function parseCmbStatement (arrayBuffer) {
       })
       continue
     }
+
+    m = raw.match(ccbRe)
+    if (m) {
+      const [, td, pd, card, desc, rmb] = m
+      const amount = parseFloat(rmb.replace(/,/g, ''))
+      let ccbSection = 'expense'
+      if (amount < 0) {
+        ccbSection = /还款/.test(desc) ? 'repayment' : 'refund'
+      }
+      transactions.push({
+        section: ccbSection,
+        transDate: buildDate(td),
+        postDate: buildDate(pd),
+        desc: desc.trim(),
+        amount,
+        card
+      })
+      continue
+    }
   }
-  
+
   return { billYear, billMonth, bankName, transactions, rawLines: lines }
 }

@@ -229,7 +229,7 @@ import { ElMessage } from 'element-plus'
 import { UploadFilled, Document, Edit, Download } from '@element-plus/icons-vue'
 import { parseCmbStatement } from './lib/pdf-parser.js'
 import { parseJdCsv } from './lib/jd-csv-parser.js'
-import { transform } from './lib/transform.js'
+import { getCreditCardAccount, transform } from './lib/transform.js'
 import { buildWorkbook, downloadWorkbook } from './lib/excel-writer.js'
 
 const sourceFile = ref(null)
@@ -278,7 +278,7 @@ const onFileChange = async (file) => {
     }
     parsed.value = p
     // 根据不同的账单类型设置默认账户
-    const account = p.bankName === '京东' ? '京东' : '招商银行信用卡'
+    const account = getCreditCardAccount(p)
     result.value = transform(p, { creditCardAccount: account })
     result.value.expenses.forEach(record => {
       record.成员 = '宝宝的憨憨'

@@ -89,7 +89,6 @@ export async function parseJdCsv (arrayBuffer) {
     const merchant = row[headerMap['商户名称']] || ''
     const desc = row[headerMap['交易说明']] || ''
     const amountStr = String(row[headerMap['金额']] || '')
-    const status = row[headerMap['交易状态']] || ''
     const inOut = row[headerMap['收/支']] || ''
     const jdCategory = row[headerMap['交易分类']] || ''
     
