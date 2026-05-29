@@ -1,6 +1,8 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs'
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url'
 
+import { detectBank } from './bank-detector.js'
+
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 const SECTIONS = {
@@ -41,14 +43,6 @@ async function extractLines (arrayBuffer) {
 function buildDate (ymd) {
   const [y, m, d] = ymd.split(/[/-]/).map(n => parseInt(n))
   return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')} 06:00:00`
-}
-
-function detectBank (lines) {
-  const fullText = lines.join(' ')
-  if (fullText.includes('招商银行')) return '招商银行'
-  if (fullText.includes('cgbchina.com.cn')) return '广发银行'
-  if (fullText.includes('中国建设银行') || fullText.includes('龙卡信用卡')) return '建设银行'
-  return '信用卡'
 }
 
 export async function parseCmbStatement (arrayBuffer) {
