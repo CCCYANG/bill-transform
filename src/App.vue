@@ -32,23 +32,44 @@
         </div>
       </div>
 
-      <div v-if="result" class="preview-section">
+      <div v-if="isLoading" class="loading-section">
+        <div class="loading-content">
+          <el-icon class="is-loading" style="font-size: 48px;"><loading /></el-icon>
+          <div class="loading-text">正在解析文件，请稍候...</div>
+        </div>
+      </div>
+
+      <div v-else-if="result" class="preview-section">
         <el-divider content-position="left">
           <el-icon><edit /></el-icon>
           预览
         </el-divider>
 
         <div class="batch-action-section">
-          <span class="batch-label">批量设置成员：</span>
-          <el-select
-            v-model="batchMember"
-            size="small"
-            style="width: 160px"
-            @change="handleBatchMemberChange"
-          >
-            <el-option label="宝宝的憨憨" value="宝宝的憨憨" />
-            <el-option label="憨憨的宝宝" value="憨憨的宝宝" />
-          </el-select>
+          <div class="batch-item">
+            <span class="batch-label">批量设置成员：</span>
+            <el-select
+              v-model="batchMember"
+              size="small"
+              style="width: 160px"
+              @change="handleBatchMemberChange"
+            >
+              <el-option label="宝宝的憨憨" value="宝宝的憨憨" />
+              <el-option label="憨憨的宝宝" value="憨憨的宝宝" />
+            </el-select>
+          </div>
+          <div class="batch-item">
+            <span class="batch-label">日期筛选：</span>
+            <el-date-picker
+              v-model="dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始"
+              end-placeholder="结束"
+              size="small"
+              style="width: 280px"
+            />
+          </div>
         </div>
 
         <el-tabs v-model="activeTab" type="border-card">
@@ -226,7 +247,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled, Document, Edit, Download } from '@element-plus/icons-vue'
+import { UploadFilled, Document, Edit, Download, Loading } from '@element-plus/icons-vue'
 import { parseCmbStatement } from './lib/pdf-parser.js'
 import { parseJdCsv } from './lib/jd-csv-parser.js'
 import { getCreditCardAccount, transform } from './lib/transform.js'
@@ -237,12 +258,59 @@ const parsed = ref(null)
 const result = ref(null)
 const activeTab = ref('expenses')
 const batchMember = ref('宝宝的憨憨')
+const isLoading = ref(false)
+const dateRange = ref([])
 const showDebug = ref(false)
 const rawLines = ref([])
 
-const expenses = computed(() => result.value?.expenses || [])
-const incomes = computed(() => result.value?.incomes || [])
-const transfers = computed(() => result.value?.transfers || [])
+const allRecords = computed(() => {
+  if (!result.value) return []
+  return [...result.value.expenses, ...result.value.incomes, ...result.value.transfers]
+})
+
+const minDate = computed(() => {
+  const dates = allRecords.value.map(r => new Date(r.日期))
+  return dates.length ? new Date(Math.min(...dates)) : null
+})
+
+const maxDate = computed(() => {
+  const dates = allRecords.value.map(r => new Date(r.日期))
+  return dates.length ? new Date(Math.max(...dates)) : null
+})
+
+const filteredExpenses = computed(() => {
+  if (!result.value) return []
+  if (!dateRange.value || dateRange.value.length !== 2) return result.value.expenses
+  const [start, end] = dateRange.value
+  return result.value.expenses.filter(r => {
+    const d = new Date(r.日期)
+    return d >= start && d <= end
+  })
+})
+
+const filteredIncomes = computed(() => {
+  if (!result.value) return []
+  if (!dateRange.value || dateRange.value.length !== 2) return result.value.incomes
+  const [start, end] = dateRange.value
+  return result.value.incomes.filter(r => {
+    const d = new Date(r.日期)
+    return d >= start && d <= end
+  })
+})
+
+const filteredTransfers = computed(() => {
+  if (!result.value) return []
+  if (!dateRange.value || dateRange.value.length !== 2) return result.value.transfers
+  const [start, end] = dateRange.value
+  return result.value.transfers.filter(r => {
+    const d = new Date(r.日期)
+    return d >= start && d <= end
+  })
+})
+
+const expenses = filteredExpenses
+const incomes = filteredIncomes
+const transfers = filteredTransfers
 
 const totalCount = computed(() => {
   if (!result.value) return 0
@@ -256,6 +324,8 @@ const onFileChange = async (file) => {
   parsed.value = null
   result.value = null
   rawLines.value = []
+  dateRange.value = []
+  isLoading.value = true
   try {
     const buf = await raw.arrayBuffer()
     const fileName = raw.name.toLowerCase()
@@ -286,10 +356,17 @@ const onFileChange = async (file) => {
     result.value.incomes.forEach(record => {
       record.成员 = '宝宝的憨憨'
     })
+    // 设置默认日期范围为最大日期区间
+    await new Promise(resolve => setTimeout(resolve, 0))
+    if (minDate.value && maxDate.value) {
+      dateRange.value = [minDate.value, maxDate.value]
+    }
     ElMessage.success(`解析成功，共 ${p.transactions.length} 笔交易`)
   } catch (e) {
     ElMessage.error('解析失败：' + e.message)
     console.error(e)
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -307,7 +384,12 @@ const handleBatchMemberChange = (value) => {
 const handleExport = async () => {
   if (!result.value) return
   try {
-    const wb = await buildWorkbook(result.value)
+    const filteredResult = {
+      expenses: filteredExpenses.value,
+      incomes: filteredIncomes.value,
+      transfers: filteredTransfers.value
+    }
+    const wb = await buildWorkbook(filteredResult)
     const bankName = parsed.value?.bankName || '信用卡'
     const now = new Date()
     const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
@@ -366,10 +448,33 @@ const handleExport = async () => {
   border-radius: 4px;
   display: flex;
   align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.batch-item {
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 .batch-label {
   font-size: 14px;
+  color: #606266;
+}
+.loading-section {
+  margin-top: 24px;
+  padding: 48px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  text-align: center;
+}
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.loading-text {
+  font-size: 16px;
   color: #606266;
 }
 .transfer-notice {
