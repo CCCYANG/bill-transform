@@ -12,7 +12,7 @@ function limitBasicInfoName (value) {
   return chars.slice(0, BASIC_INFO_NAME_MAX_LENGTH - 3).join('') + '...'
 }
 
-export async function buildWorkbook ({ expenses, incomes, transfers }) {
+export async function buildWorkbook ({ expenses, incomes }) {
   const workbook = new ExcelJS.Workbook()
   
   const expenseSheet = workbook.addWorksheet('支出')
@@ -20,9 +20,6 @@ export async function buildWorkbook ({ expenses, incomes, transfers }) {
   
   const incomeSheet = workbook.addWorksheet('收入')
   addSheetData(incomeSheet, incomes, INCOME_HEADER, 'income')
-  
-  const transferSheet = workbook.addWorksheet('转账')
-  addSheetHeaderOnly(transferSheet, TRANSFER_HEADER)
   
   return workbook
 }

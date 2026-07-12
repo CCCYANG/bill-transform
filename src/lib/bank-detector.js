@@ -1,5 +1,6 @@
 export function detectBank (lines) {
   const fullText = lines.join(' ')
+  if (fullText.includes('微信支付') || fullText.includes('微信支付账单')) return '微信'
   if (fullText.includes('招商银行')) return '招商银行'
   const hasCgbWebsite = fullText.includes('cgbchina.com.cn')
   const hasCgbAppText = fullText.includes('发现精彩')
