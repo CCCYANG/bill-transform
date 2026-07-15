@@ -13,7 +13,7 @@
               @click="currentStep = 0"
             >
               <div class="step-circle">
-                <el-icon v-if="currentStep > 0"><Check /></el-icon>
+                <el-icon v-if="currentStep > 0"><check /></el-icon>
                 <span v-else>1</span>
               </div>
               <span class="step-label">上传文件</span>
@@ -25,7 +25,7 @@
               @click="currentStep = 1"
             >
               <div class="step-circle">
-                <el-icon v-if="currentStep > 1"><Check /></el-icon>
+                <el-icon v-if="currentStep > 1"><check /></el-icon>
                 <span v-else>2</span>
               </div>
               <span class="step-label">预览转换</span>
@@ -35,221 +35,249 @@
       </template>
       
       <div class="main-content">
-      <div v-show="currentStep === 0" class="upload-section">
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-card class="source-card">
-              <template #header>
-                <div class="sub-header">
-                  <span>源文件 (支持批量上传)</span>
-                  <el-button type="primary" size="small" @click="handleUpload">
-                    <el-icon><Upload /></el-icon>
-                    上传文件
-                  </el-button>
-                  <el-button type="danger" size="small" @click="clearAllFiles" v-if="uploadedFiles.length">
-                    <el-icon><Delete /></el-icon>
-                    清空
-                  </el-button>
+        <div v-show="currentStep === 0" class="upload-section">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-card class="source-card">
+                <template #header>
+                  <div class="sub-header">
+                    <span>源文件 (支持批量上传)</span>
+                    <el-button type="primary" size="small" @click="handleUpload">
+                      <el-icon><upload /></el-icon>
+                      上传文件
+                    </el-button>
+                    <el-button
+                      v-if="uploadedFiles.length"
+                      type="danger"
+                      size="small"
+                      @click="clearAllFiles"
+                    >
+                      <el-icon><delete /></el-icon>
+                      清空
+                    </el-button>
+                  </div>
+                </template>
+                <div v-if="uploadedFiles.length === 0" class="empty-state">
+                  <el-icon class="empty-icon"><document /></el-icon>
+                  <p>请上传PDF、Excel或CSV格式的账单文件</p>
+                  <p class="supported-formats">支持：招商银行、广发银行、建设银行、京东、微信账单</p>
+                  <p class="supported-formats">支持批量上传，可多次选择文件</p>
                 </div>
-              </template>
-              <div v-if="uploadedFiles.length === 0" class="empty-state">
-                <el-icon class="empty-icon"><Document /></el-icon>
-                <p>请上传PDF、Excel或CSV格式的账单文件</p>
-                <p class="supported-formats">支持：招商银行、广发银行、建设银行、京东、微信账单</p>
-                <p class="supported-formats">支持批量上传，可多次选择文件</p>
-              </div>
-              <div v-else class="file-list">
-                <div v-for="(item, index) in uploadedFiles" :key="item.id" class="file-item">
-                  <div class="file-info">
-                    <el-icon :type="getFileIcon(item.type)"></el-icon>
-                    <span>{{ item.name }}</span>
-                    <el-tag size="small" :type="getFileTypeTag(item.name)">
-                      {{ item.type.toUpperCase() }}
-                    </el-tag>
-                    <el-tag v-if="item.bankName" size="small" type="info">
-                      {{ item.bankName }}
-                    </el-tag>
-                    <el-tag v-if="item.status === 'success'" size="small" type="success">
-                      {{ item.transactionCount }}笔
-                    </el-tag>
-                    <el-tag v-if="item.status === 'error'" size="small" type="danger">
-                      解析失败
-                    </el-tag>
-                    <el-tag v-if="item.status === 'loading'" size="small" type="warning">
-                      解析中...
+                <div v-else class="file-list">
+                  <div v-for="(item, index) in uploadedFiles" :key="item.id" class="file-item">
+                    <div class="file-info">
+                      <el-icon>
+                        <component :is="getFileIcon(item.type)" />
+                      </el-icon>
+                      <span>{{ item.name }}</span>
+                      <el-tag size="small" :type="getFileTypeTag(item.name)">
+                        {{ item.type.toUpperCase() }}
+                      </el-tag>
+                      <el-tag v-if="item.bankName" size="small" type="info">
+                        {{ item.bankName }}
+                      </el-tag>
+                      <el-tag v-if="item.status === 'success'" size="small" type="success">
+                        {{ item.transactionCount }}笔
+                      </el-tag>
+                      <el-tag v-if="item.status === 'error'" size="small" type="danger">
+                        解析失败
+                      </el-tag>
+                      <el-tag v-if="item.status === 'loading'" size="small" type="warning">
+                        解析中...
+                      </el-tag>
+                    </div>
+                    <el-button type="text" size="small" @click="removeFile(index)">
+                      <el-icon><close /></el-icon>
+                    </el-button>
+                  </div>
+                  <div class="file-summary">
+                    <el-tag size="small" type="info">
+                      共 {{ uploadedFiles.length }} 个文件，{{ totalTransactionCount }} 笔交易
                     </el-tag>
                   </div>
-                  <el-button type="text" size="small" @click="removeFile(index)">
-                    <el-icon><Close /></el-icon>
-                  </el-button>
                 </div>
-                <div class="file-summary">
-                  <el-tag size="small" type="info">
-                    共 {{ uploadedFiles.length }} 个文件，{{ totalTransactionCount }} 笔交易
-                  </el-tag>
-                </div>
-              </div>
-            </el-card>
-          </el-col>
+              </el-card>
+            </el-col>
           
-          <el-col :span="12">
-            <el-card class="template-card">
-              <template #header>
-                <div class="sub-header">
-                  <span>目标模板</span>
-                  <el-button type="info" size="small" @click="loadTemplate">
-                    <el-icon><Refresh /></el-icon>
-                    加载模板
-                  </el-button>
-                </div>
-              </template>
-              <div v-if="!templateData" class="empty-state">
-                <el-icon class="empty-icon"><FolderOpened /></el-icon>
-                <p>点击加载模板以查看目标格式</p>
-              </div>
-              <div v-else class="template-info">
-                <el-tag type="info">模板已加载</el-tag>
-                <p class="template-path">{{ templatePath }}</p>
-              </div>
-            </el-card>
-          </el-col>
-        </el-row>
-      </div>
-
-      <div v-show="currentStep === 1" class="preview-section">
-        <el-tabs v-model="activeTab" class="preview-tabs">
-          <el-tab-pane label="源文件数据" name="source">
-            <el-table :data="allTransactions" border stripe max-height="1000">
-              <el-table-column prop="sourceFile" label="来源文件" width="200" />
-              <el-table-column prop="transDate" label="日期" width="150" />
-              <el-table-column prop="desc" label="交易说明" />
-              <el-table-column prop="amount" label="金额" width="120" />
-              <el-table-column prop="section" label="类型" width="100">
-                <template #default="{ row }">
-                  <el-tag :type="getSectionTag(row.section)" size="small">
-                    {{ getSectionLabel(row.section) }}
-                  </el-tag>
+            <el-col :span="12">
+              <el-card class="template-card">
+                <template #header>
+                  <div class="sub-header">
+                    <span>目标模板</span>
+                    <el-button type="info" size="small" @click="loadTemplate">
+                      <el-icon><refresh /></el-icon>
+                      加载模板
+                    </el-button>
+                  </div>
                 </template>
-              </el-table-column>
-            </el-table>
-          </el-tab-pane>
-          
-          <el-tab-pane label="转换结果" name="result">
-            <div class="result-toolbar">
-              <el-switch
-                v-model="enableDedup"
-                :disabled="!hasDuplicates"
-                active-text="智能去重"
-                inactive-text="显示全部"
-                @change="handleDedupChange"
-              />
-              <el-alert
-                v-if="dedupCount > 0"
-                type="success"
-                :closable="false"
-                size="small"
-                style="margin-left: 10px; flex: 1"
+                <div v-if="!templateData" class="empty-state">
+                  <el-icon class="empty-icon"><folder-opened /></el-icon>
+                  <p>点击加载模板以查看目标格式</p>
+                </div>
+                <div v-else class="template-info">
+                  <el-tag type="info">模板已加载</el-tag>
+                  <p class="template-path">{{ templatePath }}</p>
+                </div>
+              </el-card>
+            </el-col>
+          </el-row>
+        </div>
+
+        <div v-show="currentStep === 1" class="preview-section">
+          <el-tabs v-model="activeTab" class="preview-tabs">
+            <el-tab-pane label="源文件数据" name="source">
+              <el-table
+                :data="allTransactions"
+                border
+                stripe
+                max-height="1000"
               >
-                已自动去重 {{ dedupCount }} 条重复支出记录，保留信息更完整的一条
-              </el-alert>
-            </div>
-            <el-tabs v-model="resultTab" class="result-tabs">
-              <el-tab-pane name="expenses">
-                <template #label>
-                  支出
-                  <el-badge v-if="duplicateExpenseCount > 0" :value="duplicateExpenseCount" type="danger" />
-                </template>
-                <el-table :data="transformedData.expenses" border stripe max-height="1000" :row-class-name="duplicateRowClass">
-                  <el-table-column prop="日期" label="日期" width="150" />
-                  <el-table-column prop="一级分类" label="一级分类" width="120" />
-                  <el-table-column prop="二级分类" label="二级分类" width="120" />
-                  <el-table-column prop="商家" label="商家" />
-                  <el-table-column prop="金额" label="金额" width="100" />
-                  <el-table-column label="状态" width="80">
-                    <template #default="{ row }">
-                      <el-tag v-if="row._isDuplicate" type="danger" size="small">重复</el-tag>
-                    </template>
-                  </el-table-column>
-                  <el-table-column prop="备注" label="备注" width="200" />
-                  <el-table-column label="操作" width="80" fixed="right">
-                    <template #default="{ row, $index }">
-                      <el-button type="text" size="small" @click="deleteRecord('expenses', $index)">删除</el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </el-tab-pane>
-              <el-tab-pane label="收入" name="incomes">
-                <el-table :data="transformedData.incomes" border stripe max-height="1000">
-                  <el-table-column prop="日期" label="日期" width="150" />
-                  <el-table-column prop="一级分类" label="一级分类" width="120" />
-                  <el-table-column prop="二级分类" label="二级分类" width="120" />
-                  <el-table-column prop="商家" label="商家" />
-                  <el-table-column prop="金额" label="金额" width="100" />
-                  <el-table-column prop="备注" label="备注" width="200" />
-                  <el-table-column label="操作" width="80" fixed="right">
-                    <template #default="{ row, $index }">
-                      <el-button type="text" size="small" @click="deleteRecord('incomes', $index)">删除</el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </el-tab-pane>
-              <el-tab-pane label="转账" name="transfers">
-                <el-table :data="transformedData.transfers" border stripe max-height="1000">
-                  <el-table-column prop="日期" label="日期" width="150" />
-                  <el-table-column prop="商家" label="商家" />
-                  <el-table-column prop="金额" label="金额" width="100" />
-                  <el-table-column prop="备注" label="备注" width="200" />
-                  <el-table-column label="操作" width="80" fixed="right">
-                    <template #default="{ row, $index }">
-                      <el-button type="text" size="small" @click="deleteRecord('transfers', $index)">删除</el-button>
-                    </template>
-                  </el-table-column>
-                </el-table>
-              </el-tab-pane>
-            </el-tabs>
-          </el-tab-pane>
-        </el-tabs>
-      </div>
+                <el-table-column prop="sourceFile" label="来源文件" width="200" />
+                <el-table-column prop="transDate" label="日期" width="150" />
+                <el-table-column prop="desc" label="交易说明" />
+                <el-table-column prop="amount" label="金额" width="120" />
+                <el-table-column prop="section" label="类型" width="100">
+                  <template #default="{ row }">
+                    <el-tag :type="getSectionTag(row.section)" size="small">
+                      {{ getSectionLabel(row.section) }}
+                    </el-tag>
+                  </template>
+                </el-table-column>
+              </el-table>
+            </el-tab-pane>
+          
+            <el-tab-pane label="转换结果" name="result">
+              <div class="result-toolbar">
+                <el-switch
+                  v-model="enableDedup"
+                  :disabled="!hasDuplicates"
+                  active-text="智能去重"
+                  inactive-text="显示全部"
+                  @change="handleDedupChange"
+                />
+                <el-alert
+                  v-if="dedupCount > 0"
+                  type="success"
+                  :closable="false"
+                  size="small"
+                  style="margin-left: 10px; flex: 1"
+                >
+                  已自动去重 {{ dedupCount }} 条重复支出记录，保留信息更完整的一条
+                </el-alert>
+              </div>
+              <el-tabs v-model="resultTab" class="result-tabs">
+                <el-tab-pane name="expenses">
+                  <template #label>
+                    支出
+                    <el-badge v-if="duplicateExpenseCount > 0" :value="duplicateExpenseCount" type="danger" />
+                  </template>
+                  <el-table
+                    :data="transformedData.expenses"
+                    border
+                    stripe
+                    max-height="1000"
+                    :row-class-name="duplicateRowClass"
+                  >
+                    <el-table-column prop="日期" label="日期" width="150" />
+                    <el-table-column prop="一级分类" label="一级分类" width="120" />
+                    <el-table-column prop="二级分类" label="二级分类" width="120" />
+                    <el-table-column prop="商家" label="商家" />
+                    <el-table-column prop="金额" label="金额" width="100" />
+                    <el-table-column label="状态" width="80">
+                      <template #default="{ row }">
+                        <el-tag v-if="row._isDuplicate" type="danger" size="small">重复</el-tag>
+                      </template>
+                    </el-table-column>
+                    <el-table-column prop="备注" label="备注" width="200" />
+                    <el-table-column label="操作" width="80" fixed="right">
+                      <template #default="{ $index }">
+                        <el-button type="text" size="small" @click="deleteRecord('expenses', $index)">删除</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </el-tab-pane>
+                <el-tab-pane label="收入" name="incomes">
+                  <el-table
+                    :data="transformedData.incomes"
+                    border
+                    stripe
+                    max-height="1000"
+                  >
+                    <el-table-column prop="日期" label="日期" width="150" />
+                    <el-table-column prop="一级分类" label="一级分类" width="120" />
+                    <el-table-column prop="二级分类" label="二级分类" width="120" />
+                    <el-table-column prop="商家" label="商家" />
+                    <el-table-column prop="金额" label="金额" width="100" />
+                    <el-table-column prop="备注" label="备注" width="200" />
+                    <el-table-column label="操作" width="80" fixed="right">
+                      <template #default="{ $index }">
+                        <el-button type="text" size="small" @click="deleteRecord('incomes', $index)">删除</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </el-tab-pane>
+                <el-tab-pane label="转账" name="transfers">
+                  <el-table
+                    :data="transformedData.transfers"
+                    border
+                    stripe
+                    max-height="1000"
+                  >
+                    <el-table-column prop="日期" label="日期" width="150" />
+                    <el-table-column prop="商家" label="商家" />
+                    <el-table-column prop="金额" label="金额" width="100" />
+                    <el-table-column prop="备注" label="备注" width="200" />
+                    <el-table-column label="操作" width="80" fixed="right">
+                      <template #default="{ $index }">
+                        <el-button type="text" size="small" @click="deleteRecord('transfers', $index)">删除</el-button>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+                </el-tab-pane>
+              </el-tabs>
+            </el-tab-pane>
+          </el-tabs>
+        </div>
 
-      <div v-show="currentStep === 0" class="action-section">
-        <el-button 
-          type="primary" 
-          size="large" 
-          :disabled="!canTransform"
-          @click="currentStep = 1"
-        >
-          下一步
-          <el-icon><ArrowRight /></el-icon>
-        </el-button>
-      </div>
+        <div v-show="currentStep === 0" class="action-section">
+          <el-button 
+            type="primary" 
+            size="large" 
+            :disabled="!canTransform"
+            @click="currentStep = 1"
+          >
+            下一步
+            <el-icon><arrow-right /></el-icon>
+          </el-button>
+        </div>
 
-      <div v-show="currentStep === 1" class="action-section">
-        <el-button 
-          size="large" 
-          @click="currentStep = 0"
-        >
-          <el-icon><ArrowLeft /></el-icon>
-          上一步
-        </el-button>
-        <el-button 
-          type="primary" 
-          size="large" 
-          :disabled="!canTransform"
-          @click="handleTransform"
-        >
-          <el-icon><ArrowRight /></el-icon>
-          开始转换
-        </el-button>
-        <el-button 
-          type="success" 
-          size="large" 
-          :disabled="!hasTransformedData"
-          @click="handleExport"
-        >
-          <el-icon><Download /></el-icon>
-          导出Excel
-        </el-button>
-      </div>
+        <div v-show="currentStep === 1" class="action-section">
+          <el-button 
+            size="large" 
+            @click="currentStep = 0"
+          >
+            <el-icon><arrow-left /></el-icon>
+            上一步
+          </el-button>
+          <el-button 
+            type="primary" 
+            size="large" 
+            :disabled="!canTransform"
+            @click="handleTransform"
+          >
+            <el-icon><arrow-right /></el-icon>
+            开始转换
+          </el-button>
+          <el-button 
+            type="success" 
+            size="large" 
+            :disabled="!hasTransformedData"
+            @click="handleExport"
+          >
+            <el-icon><download /></el-icon>
+            导出Excel
+          </el-button>
+        </div>
       </div>
     </el-card>
 
@@ -268,6 +296,7 @@
 import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as XLSX from 'xlsx'
+import { Check, Upload, Delete, Document, Close, FolderOpened, Refresh, ArrowRight, ArrowLeft, Download } from '@element-plus/icons-vue'
 
 import { parseWechatBill } from './lib/wechat-bill-parser.js'
 import { parseJdCsv } from './lib/jd-csv-parser.js'
@@ -279,10 +308,10 @@ const fileInput = ref(null)
 const uploadedFiles = ref([])
 const templateData = ref(null)
 const templatePath = ref('')
+const templateFields = ref([])
 const transformedData = ref({ expenses: [], incomes: [], transfers: [] })
 const activeTab = ref('source')
 const resultTab = ref('expenses')
-const templateFields = ref([])
 const enableDedup = ref(false)
 const dedupCount = ref(0)
 const mergedResult = ref(null)
@@ -351,9 +380,9 @@ const getFileTypeTag = (filename) => {
 }
 
 const getFileIcon = (type) => {
-  if (type === 'pdf') return 'Document'
-  if (type === 'csv') return 'Grid'
-  return 'FolderOpened'
+  if (type === 'pdf') return Document
+  if (type === 'csv') return FolderOpened
+  return FolderOpened
 }
 
 const getSectionLabel = (section) => {
@@ -507,7 +536,7 @@ const parsePdfFile = async (file) => {
 
 const loadTemplate = async () => {
   try {
-    const response = await fetch('./template.xls')
+    const response = await fetch('/template.xls')
     const blob = await response.blob()
     const arrayBuffer = await blob.arrayBuffer()
     const data = new Uint8Array(arrayBuffer)
@@ -517,7 +546,7 @@ const loadTemplate = async () => {
     
     templateData.value = jsonData
     templateFields.value = jsonData[0] || []
-    templatePath.value = './template.xls'
+    templatePath.value = '/template.xls'
     
     ElMessage.success('模板加载成功')
   } catch (error) {
@@ -628,9 +657,6 @@ const handleExport = async () => {
   max-width: 1200px;
   margin: 0 auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-}
-
-.main-content {
 }
 
 .card-header {
@@ -811,10 +837,6 @@ const handleExport = async () => {
 
 .preview-tabs {
   margin-top: 10px;
-}
-
-.result-toolbar {
-  margin-bottom: 10px;
 }
 
 .result-tabs {

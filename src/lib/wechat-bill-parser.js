@@ -98,7 +98,7 @@ export async function parseWechatBill (arrayBuffer) {
     if (amount === 0) continue
 
     let section = 'expense'
-    let finalAmount = amount
+    const finalAmount = amount
 
     if (inOut === '收入') {
       section = 'refund'
