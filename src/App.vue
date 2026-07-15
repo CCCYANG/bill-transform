@@ -536,7 +536,11 @@ const parsePdfFile = async (file) => {
 
 const loadTemplate = async () => {
   try {
-    const response = await fetch('/template.xls')
+    const templatePath = `${import.meta.env.BASE_URL}template.xls`.replace(/\/+/g, '/')
+    const response = await fetch(templatePath)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch template: ${response.status} ${response.statusText}`)
+    }
     const blob = await response.blob()
     const arrayBuffer = await blob.arrayBuffer()
     const data = new Uint8Array(arrayBuffer)
@@ -546,7 +550,6 @@ const loadTemplate = async () => {
     
     templateData.value = jsonData
     templateFields.value = jsonData[0] || []
-    templatePath.value = '/template.xls'
     
     ElMessage.success('模板加载成功')
   } catch (error) {
