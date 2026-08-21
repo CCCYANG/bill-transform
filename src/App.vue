@@ -5,6 +5,10 @@
         <div class="card-header">
           <div class="header-title">
             <span class="title">账单转换工具</span>
+            <el-button class="settings-btn" text @click="settingsVisible = true">
+              <el-icon><setting /></el-icon>
+              设置
+            </el-button>
           </div>
           <div class="step-nav">
             <div 
@@ -148,13 +152,23 @@
           
             <el-tab-pane label="转换结果" name="result">
               <div class="result-toolbar">
-                <el-switch
-                  v-model="enableDedup"
-                  :disabled="!hasDuplicates"
-                  active-text="智能去重"
-                  inactive-text="显示全部"
-                  @change="handleDedupChange"
-                />
+                <div class="toolbar-switches">
+                  <el-switch
+                    v-model="enableDedup"
+                    :disabled="!hasDuplicates"
+                    active-text="智能去重"
+                    inactive-text="显示全部"
+                    @change="handleDedupChange"
+                  />
+                  <el-switch
+                    v-model="smartClassifyEnabled"
+                    :disabled="!hasDeepseekApiKey"
+                    active-text="智能分类"
+                    inactive-text="仅规则"
+                    @change="onSmartClassifyToggle"
+                  />
+                  <span v-if="!hasDeepseekApiKey" class="toolbar-hint">请先在设置中配置 API Key</span>
+                </div>
                 <el-alert
                   v-if="dedupCount > 0"
                   type="success"
@@ -179,13 +193,41 @@
                     :row-class-name="duplicateRowClass"
                   >
                     <el-table-column prop="日期" label="日期" width="150" />
-                    <el-table-column prop="一级分类" label="一级分类" width="120" />
-                    <el-table-column prop="二级分类" label="二级分类" width="120" />
+                    <el-table-column label="一级分类" width="140">
+                      <template #default="{ row }">
+                        <el-select
+                          v-model="row.一级分类"
+                          size="small"
+                          filterable
+                          @change="onExpenseCategory1Change(row)"
+                        >
+                          <el-option
+                            v-for="c1 in expenseCategory1Options"
+                            :key="c1"
+                            :label="c1"
+                            :value="c1"
+                          />
+                        </el-select>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="二级分类" width="150">
+                      <template #default="{ row }">
+                        <el-select v-model="row.二级分类" size="small" filterable>
+                          <el-option
+                            v-for="c2 in expenseCategory2Options(row.一级分类)"
+                            :key="c2"
+                            :label="c2"
+                            :value="c2"
+                          />
+                        </el-select>
+                      </template>
+                    </el-table-column>
                     <el-table-column prop="商家" label="商家" />
                     <el-table-column prop="金额" label="金额" width="100" />
-                    <el-table-column label="状态" width="80">
+                    <el-table-column label="状态" width="100">
                       <template #default="{ row }">
                         <el-tag v-if="row._isDuplicate" type="danger" size="small">重复</el-tag>
+                        <el-tag v-else-if="row._aiClassified" type="warning" size="small">AI</el-tag>
                       </template>
                     </el-table-column>
                     <el-table-column prop="备注" label="备注" width="200" />
@@ -204,8 +246,35 @@
                     max-height="1000"
                   >
                     <el-table-column prop="日期" label="日期" width="150" />
-                    <el-table-column prop="一级分类" label="一级分类" width="120" />
-                    <el-table-column prop="二级分类" label="二级分类" width="120" />
+                    <el-table-column label="一级分类" width="140">
+                      <template #default="{ row }">
+                        <el-select
+                          v-model="row.一级分类"
+                          size="small"
+                          filterable
+                          @change="onIncomeCategory1Change(row)"
+                        >
+                          <el-option
+                            v-for="c1 in incomeCategory1Options"
+                            :key="c1"
+                            :label="c1"
+                            :value="c1"
+                          />
+                        </el-select>
+                      </template>
+                    </el-table-column>
+                    <el-table-column label="二级分类" width="150">
+                      <template #default="{ row }">
+                        <el-select v-model="row.二级分类" size="small" filterable>
+                          <el-option
+                            v-for="c2 in incomeCategory2Options(row.一级分类)"
+                            :key="c2"
+                            :label="c2"
+                            :value="c2"
+                          />
+                        </el-select>
+                      </template>
+                    </el-table-column>
                     <el-table-column prop="商家" label="商家" />
                     <el-table-column prop="金额" label="金额" width="100" />
                     <el-table-column prop="备注" label="备注" width="200" />
@@ -289,20 +358,52 @@
       style="display: none" 
       @change="onFilesSelected"
     />
+
+    <el-dialog v-model="settingsVisible" title="设置" width="480px">
+      <el-form label-width="110px">
+        <el-form-item label="DeepSeek Key">
+          <el-input
+            v-model="deepseekApiKey"
+            type="password"
+            show-password
+            placeholder="sk-..."
+            clearable
+          />
+        </el-form-item>
+        <el-alert
+          type="info"
+          :closable="false"
+          title="API Key 只保存在本机浏览器。配置后可在「转换结果」中开启智能分类。"
+        />
+      </el-form>
+      <template #footer>
+        <el-button @click="settingsVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveSettings">保存</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import * as XLSX from 'xlsx'
-import { Check, Upload, Delete, Document, Close, FolderOpened, Refresh, ArrowRight, ArrowLeft, Download } from '@element-plus/icons-vue'
+import { Check, Upload, Delete, Document, Close, FolderOpened, Refresh, ArrowRight, ArrowLeft, Download, Setting } from '@element-plus/icons-vue'
 
 import { parseWechatBill } from './lib/wechat-bill-parser.js'
 import { parseJdCsv } from './lib/jd-csv-parser.js'
 import { parseCmbStatement } from './lib/pdf-parser.js'
 import { transform } from './lib/transform.js'
 import { buildWorkbook, downloadWorkbook } from './lib/excel-writer.js'
+import { CATEGORY_MAP, INCOME_CATEGORY_MAP } from './lib/categories.js'
+import { classifyExpensesWithAI } from './lib/ai-classify.js'
+import {
+  getSmartClassifyEnabled,
+  setSmartClassifyEnabled,
+  getDeepseekApiKey,
+  setDeepseekApiKey,
+  getDeepseekChatUrl
+} from './lib/settings.js'
 
 const fileInput = ref(null)
 const uploadedFiles = ref([])
@@ -316,6 +417,53 @@ const enableDedup = ref(false)
 const dedupCount = ref(0)
 const mergedResult = ref(null)
 const currentStep = ref(0)
+const settingsVisible = ref(false)
+const deepseekApiKey = ref(getDeepseekApiKey())
+const smartClassifyEnabled = ref(!!getDeepseekApiKey() && getSmartClassifyEnabled())
+
+const expenseCategory1Options = Object.keys(CATEGORY_MAP)
+const incomeCategory1Options = Object.keys(INCOME_CATEGORY_MAP)
+
+const expenseCategory2Options = (c1) => CATEGORY_MAP[c1] || []
+const incomeCategory2Options = (c1) => INCOME_CATEGORY_MAP[c1] || []
+
+const hasDeepseekApiKey = computed(() => !!(deepseekApiKey.value || getDeepseekApiKey()).trim())
+
+const onExpenseCategory1Change = (row) => {
+  const options = expenseCategory2Options(row.一级分类)
+  if (!options.includes(row.二级分类)) {
+    row.二级分类 = options[0] || ''
+  }
+  row._aiClassified = false
+  row._fromDefaultCategory = false
+}
+
+const onIncomeCategory1Change = (row) => {
+  const options = incomeCategory2Options(row.一级分类)
+  if (!options.includes(row.二级分类)) {
+    row.二级分类 = options[0] || ''
+  }
+}
+
+const onSmartClassifyToggle = (on) => {
+  if (on && !hasDeepseekApiKey.value) {
+    smartClassifyEnabled.value = false
+    ElMessage.warning('请先在设置中配置 DeepSeek API Key')
+    return
+  }
+  setSmartClassifyEnabled(on)
+}
+
+const saveSettings = () => {
+  setDeepseekApiKey(deepseekApiKey.value)
+  deepseekApiKey.value = getDeepseekApiKey()
+  if (!deepseekApiKey.value) {
+    smartClassifyEnabled.value = false
+    setSmartClassifyEnabled(false)
+  }
+  settingsVisible.value = false
+  ElMessage.success('设置已保存')
+}
 
 const totalTransactionCount = computed(() => {
   return uploadedFiles.value.reduce((sum, item) => {
@@ -557,7 +705,7 @@ const loadTemplate = async () => {
   }
 }
 
-const handleTransform = () => {
+const handleTransform = async () => {
   if (totalTransactionCount.value === 0) {
     ElMessage.warning('没有可转换的交易数据')
     return
@@ -582,7 +730,14 @@ const handleTransform = () => {
   }
 
   applyTransform()
-  
+
+  const enabled = smartClassifyEnabled.value && hasDeepseekApiKey.value
+  if (enabled) {
+    await applySmartClassify(getDeepseekApiKey())
+  } else if (smartClassifyEnabled.value && !hasDeepseekApiKey.value) {
+    ElMessage.warning('已开启智能分类，请先在设置中配置 DeepSeek API Key')
+  }
+
   ElMessage.success(`转换完成，共 ${mergedTransactions.length} 笔交易`)
   activeTab.value = 'result'
 }
@@ -595,6 +750,57 @@ const applyTransform = () => {
     transfers: result.transfers
   }
   dedupCount.value = result.dedupCount || 0
+}
+
+const applySmartClassify = async (apiKey) => {
+  const expenses = transformedData.value.expenses
+  const candidates = []
+  expenses.forEach((row, index) => {
+    if (row._fromDefaultCategory) {
+      candidates.push({
+        id: String(index),
+        desc: row.备注 || row.商家 || ''
+      })
+    }
+  })
+
+  if (!candidates.length) return
+
+  const loading = ElLoading.service({
+    lock: true,
+    text: `智能分类中… 0/${Math.ceil(candidates.length / 40)}`,
+    background: 'rgba(0, 0, 0, 0.35)'
+  })
+
+  try {
+    const results = await classifyExpensesWithAI(candidates, {
+      apiKey,
+      chatUrl: getDeepseekChatUrl(),
+      onProgress: (done, total) => {
+        loading.setText(`智能分类中… ${done}/${total}`)
+      }
+    })
+
+    let applied = 0
+    for (const item of results) {
+      const idx = Number(item.id)
+      if (!Number.isInteger(idx) || !expenses[idx]) continue
+      expenses[idx].一级分类 = item.c1
+      expenses[idx].二级分类 = item.c2
+      expenses[idx]._aiClassified = true
+      applied += 1
+    }
+
+    if (applied > 0) {
+      ElMessage.success(`智能分类完成，更新 ${applied} 笔`)
+    } else {
+      ElMessage.info('智能分类未更新任何记录')
+    }
+  } catch (error) {
+    ElMessage.error('智能分类失败: ' + (error.message || String(error)))
+  } finally {
+    loading.close()
+  }
 }
 
 const handleDedupChange = (val) => {
@@ -670,6 +876,14 @@ const handleExport = async () => {
   padding: 4px 0;
 }
 
+.header-title {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .header-title .title {
   font-size: 26px;
   font-weight: 700;
@@ -677,6 +891,13 @@ const handleExport = async () => {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.settings-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .step-nav {
@@ -865,5 +1086,17 @@ const handleExport = async () => {
   padding: 8px 12px;
   background: #f5f7fa;
   border-radius: 4px;
+}
+
+.toolbar-switches {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.toolbar-hint {
+  font-size: 12px;
+  color: #909399;
 }
 </style>

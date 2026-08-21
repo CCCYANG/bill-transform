@@ -11,5 +11,23 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['pdfjs-dist']
+  },
+  server: {
+    proxy: {
+      '/deepseek': {
+        target: 'https://api.deepseek.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/deepseek/, '')
+      }
+    }
+  },
+  preview: {
+    proxy: {
+      '/deepseek': {
+        target: 'https://api.deepseek.com',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/deepseek/, '')
+      }
+    }
   }
 })

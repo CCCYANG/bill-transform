@@ -3,11 +3,11 @@ import dayjs from 'dayjs'
 import { classify, classifyIncome } from './categories.js'
 
 const CREDIT_CARD_ACCOUNTS = {
-  京东: '京东',
+  京东: '京东白条',
   招商银行: '招商银行信用卡',
   广发银行: '广发银行信用卡',
   建设银行: '建设银行信用卡',
-  微信: '微信零钱'
+  微信: '微信钱包'
 }
 
 const DEFAULT_ACCOUNT = '信用卡'
@@ -52,6 +52,7 @@ export function transform (parsed, options = {}) {
     const merchant = extractMerchant(t.desc)
     const remark = t.desc
     const transDate = ensureDate(t.transDate)
+    const account = getCreditCardAccount({ bankName: t.source || parsed.bankName }) || creditCardAccount
 
     if (t.section === 'repayment') {
       transfers.push({
@@ -59,14 +60,14 @@ export function transform (parsed, options = {}) {
         日期: transDate,
         一级分类: '',
         二级分类: '',
-        收入账户: creditCardAccount,
+        收入账户: account,
         金额: t.amount,
         成员: '',
         商家: merchant,
         项目: '',
         备注: remark,
         _isTransfer: true,
-        _source: t.source || creditCardAccount,
+        _source: t.source || account,
         _sourceFile: t.sourceFile || ''
       })
       continue
@@ -79,33 +80,34 @@ export function transform (parsed, options = {}) {
         日期: transDate,
         一级分类: c1,
         二级分类: c2,
-        收入账户: creditCardAccount,
+        收入账户: account,
         金额: Math.abs(t.amount),
         成员: '',
         商家: merchant,
         项目: '',
         备注: remark,
-        _source: t.source || creditCardAccount,
+        _source: t.source || account,
         _sourceFile: t.sourceFile || ''
       })
       continue
     }
 
-    const [c1, c2] = classify(merchant, t.jdCategory)
+    const { category: [c1, c2], fromDefault } = classify(remark, t.jdCategory)
     expenses.push({
       交易类型: '支出',
       日期: transDate,
       一级分类: c1,
       二级分类: c2,
-      收入账户: creditCardAccount,
+      收入账户: account,
       金额: t.amount,
       成员: '',
       商家: merchant,
       项目: '',
       备注: remark,
-      _source: t.source || creditCardAccount,
+      _source: t.source || account,
       _sourceFile: t.sourceFile || '',
-      _hasCategory: !!t.jdCategory
+      _hasCategory: !!t.jdCategory,
+      _fromDefaultCategory: fromDefault
     })
   }
 
@@ -216,8 +218,8 @@ function markDuplicateExpenses (expenses) {
 }
 
 const SOURCE_PRIORITY = {
-  '微信零钱': 1,
-  '京东': 2,
+  '微信钱包': 1,
+  '京东白条': 2,
   '招商银行信用卡': 3,
   '广发银行信用卡': 4,
   '建设银行信用卡': 5,

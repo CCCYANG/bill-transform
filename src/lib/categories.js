@@ -1,7 +1,6 @@
 const CATEGORY_MAP = {
   '其他': ['宠物', '丢失', '坏账', '慈善'],
   '旅游': ['旅游餐饮', '旅游交通', '旅游住宿', '旅游购物', '旅游门票'],
-  '人情': ['请客', '送礼', '亲密付', '孝心', '借出', '发红包', '还钱'],
   '怀孕生娃': ['各种补品保健品', '产前产后日用品', '医院产检'],
   '交通': ['共享单车', '打车', '公交地铁', '飞机火车', '私家车'],
   '金融': ['养卡', '保险', '车贷', '房贷', '手续费', '购物分期', '金银'],
@@ -32,23 +31,17 @@ const RULES = [
   { kw: ['旅游购物'], cat: ['旅游', '旅游购物'] },
   { kw: ['旅游门票', '门票'], cat: ['旅游', '旅游门票'] },
 
-  { kw: ['请客'], cat: ['人情', '请客'] },
-  { kw: ['送礼', '礼物'], cat: ['人情', '送礼'] },
-  { kw: ['亲密付'], cat: ['人情', '亲密付'] },
-  { kw: ['孝心', '父母', '长辈'], cat: ['人情', '孝心'] },
-  { kw: ['借出', '借款'], cat: ['人情', '借出'] },
-  { kw: ['红包'], cat: ['人情', '发红包'] },
-  { kw: ['还钱', '还款'], cat: ['人情', '还钱'] },
-
   { kw: ['补品', '保健品'], cat: ['怀孕生娃', '各种补品保健品'] },
   { kw: ['产前', '产后', '孕妇'], cat: ['怀孕生娃', '产前产后日用品'] },
   { kw: ['产检', '孕检'], cat: ['怀孕生娃', '医院产检'] },
 
   { kw: ['共享单车', '哈啰', '美团单车', '青桔'], cat: ['交通', '共享单车'] },
   { kw: ['打车', '滴滴', '高德打车', '出租'], cat: ['交通', '打车'] },
-  { kw: ['公交', '地铁'], cat: ['交通', '公交地铁'] },
+  { kw: ['公交', '地铁', '轨道交通'], cat: ['交通', '公交地铁'] },
   { kw: ['飞机', '火车', '高铁', '12306', '铁路'], cat: ['交通', '飞机火车'] },
-  { kw: ['私家车', '汽车', '加油', '聚油', '加油站', '中石化', '中石油', '充电', '充电桩', '特来电', '星星充电', '停车', '代驾', '租车', '违章', 'ETC', '高速', '苏U219T1'], cat: ['交通', '私家车'] },
+  // 共享充电宝 ≠ 汽车充电，须写在私家车规则之前
+  { kw: ['怪兽充电', '街电', '搜电', '竹芒', '美团充电宝'], cat: ['购物', '日用品'] },
+  { kw: ['私家车', '汽车', '加油', '聚油', '加油站', '中石化', '中石油', '石油', '石化', '油享', '乐闽油享', '充电桩', '特来电', '星星充电', '停车', '代驾', '租车', '违章', 'ETC', '高速', '苏U219T1', '苏州工业园区科技发展有限公司'], cat: ['交通', '私家车'] },
 
   { kw: ['养卡'], cat: ['金融', '养卡'] },
   { kw: ['保险'], cat: ['金融', '保险'] },
@@ -85,7 +78,8 @@ const RULES = [
   { kw: ['加餐'], cat: ['餐饮', '加餐'] },
   { kw: ['粮油调料'], cat: ['餐饮', '粮油调料'] },
   { kw: ['烟酒饮品', '酒', '饮料'], cat: ['餐饮', '烟酒饮品'] },
-  { kw: ['三餐', '餐厅', '美食广场', '拌饭', '炒鸡', '小吃', '火锅', '茶', '咖啡'], cat: ['餐饮', '三餐'] },
+  { kw: ['早餐', '午餐', '午饭', '晚饭', '晚餐', '夜宵'], cat: ['餐饮', '三餐'] },
+  { kw: ['三餐', '餐厅', '饭店', '食堂', '餐饮', '食品', '美食广场', '拌饭', '炒鸡', '小吃', '火锅', '烧烤', '面馆', '粉店', '米线', '粥', '骨头汤', '盖浇饭', '麻辣烫', '黄焖鸡', '沙县', '老乡鸡', '茶', '咖啡', '奶茶', '烘焙', '蛋糕'], cat: ['餐饮', '三餐'] },
   { kw: ['买菜', '蔬菜', '水果', '饴鲜'], cat: ['餐饮', '买菜'] },
   { kw: ['零食', '超越', '良品铺子'], cat: ['餐饮', '零食'] },
   { kw: ['水果'], cat: ['餐饮', '水果'] },
@@ -144,16 +138,35 @@ const JD_CATEGORY_RULES = [
 
 export { CATEGORY_MAP, INCOME_CATEGORY_MAP }
 
+export const DEFAULT_EXPENSE_CATEGORY = ['购物', '日用品']
+
+export function isDefaultExpenseCategory (cat) {
+  return Array.isArray(cat) && cat[0] === '购物' && cat[1] === '日用品'
+}
+
+export function getAllowedExpenseCategories () {
+  const pairs = []
+  for (const [c1, seconds] of Object.entries(CATEGORY_MAP)) {
+    for (const c2 of seconds) pairs.push({ c1, c2 })
+  }
+  return pairs
+}
+
 export function classify (desc, jdCategory = '') {
+  const text = String(desc || '')
   const jdTags = String(jdCategory).split(/\s+/).filter(Boolean)
   for (const r of JD_CATEGORY_RULES) {
-    if (r.tags.some(tag => jdTags.includes(tag))) return r.cat
+    if (r.tags.some(tag => jdTags.includes(tag))) {
+      return { category: r.cat, fromDefault: false }
+    }
   }
 
   for (const r of RULES) {
-    if (r.kw.some(k => desc.includes(k))) return r.cat
+    if (r.kw.some(k => text.includes(k))) {
+      return { category: r.cat, fromDefault: false }
+    }
   }
-  return ['购物', '日用品']
+  return { category: [...DEFAULT_EXPENSE_CATEGORY], fromDefault: true }
 }
 
 export function classifyIncome (desc) {
