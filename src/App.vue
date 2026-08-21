@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <div class="header-title">
-            <span class="title">账单转换工具测试</span>
+            <span class="title">账单转换工具</span>
             <el-button class="settings-btn" text @click="settingsVisible = true">
               <el-icon><setting /></el-icon>
               设置
